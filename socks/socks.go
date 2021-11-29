@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -67,7 +69,7 @@ func Request(b []byte) ([]byte, error) {
 	var cmd = b[1]
 	var addr string
 	var port = binary.BigEndian.Uint16(b[len(b)-2:])
-	var c net.Conn
+	var conn net.Conn
 	var requests = []byte{5, 0, 0, 1}
 	switch atyp {
 	case 1:
@@ -80,51 +82,44 @@ func Request(b []byte) ([]byte, error) {
 	var err error
 	switch cmd {
 	case 1:
-		c, err = net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
+		conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
 		if err != nil {
 			return nil, err
 		}
 	case 3:
-		c, err = net.Dial("udp", fmt.Sprintf("%s:%d", addr, port))
+		conn, err = net.Dial("udp", fmt.Sprintf("%s:%d", addr, port))
 		if err != nil {
 			return nil, err
 		}
 	}
-	_ = c.RemoteAddr().String()
-	return requests, nil
-	// _ := strings.Split(str, ":")
-	// var n = str1[0] // IPv4 地址 string
-	// ip := strings.Split(n, ".")
-	// var cport = str1[1]
-	// //var cport = str[1] // 端口号
-	// var int16 = make([]uint8, 4)
-	// for _, v := range ip {
-	// 	vq, err := strconv.Atoi(v)
-	// 	vq1 := uint8(vq)
-	// 	if err != nil {
-	// 		return nil, nil
-	// 	}
-	// 	int16 = append(int16, vq1)
-	// 	// requests = append(requests, byte(v))
+	str := conn.RemoteAddr().String()
+	str1 := strings.Split(str, ":")
+	str = str1[0]
+	Port2 := str1[1]
+	str1 = strings.Split(str, ".")
+	for _, v := range str1 {
+		n, _ := strconv.Atoi(v)
+		x := uint8(n)
+		requests = append(requests, x)
 
-	// }
-	// cip := int16[4:]
-	// newPort, err := strconv.Atoi(cport)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// newPort1 := uint16(newPort)
-	// ccc := IntToBytes(newPort1)
-	// cip = reverse(cip)
-	// ccc = reverse(ccc)
-	// requests = append(requests, cip...)
-	// requests = append(requests, ccc...)
-	// fmt.Println(requests)
-	// return requests, nil
+	}
+	num, _ := strconv.Atoi(Port2)
+	c := uint16(num)
+	bit := uin16ToBigendBytes(c)
+
+	requests = append(requests, bit...)
+	fmt.Printf("requests: %v\n", requests)
+	return requests, nil
 }
 
-func IntToBytes(x uint32) []byte {
+func uin16ToBigendBytes(num uint16) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
-	binary.Write(bytesBuffer, binary.BigEndian, x)
+	binary.Write(bytesBuffer, binary.BigEndian, num)
 	return bytesBuffer.Bytes()
 }
+
+// func uint8toBigendBytes(num uint8) {
+// 	Buff := bytes.NewBuffer([]byte{})
+// 	binary.Write(Buff, binary.BigEndian, num)
+// 	return Buff.Bytes()
+// }
