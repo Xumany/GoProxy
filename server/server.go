@@ -46,9 +46,17 @@ func process(conn net.Conn) {
 		n, err = conn.Read(buf[:])
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
-		fmt.Println(buf[:n])
 
+		writer, err := socks.Request(buf[:n])
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		// conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		conn.Write(writer)
 	}
 }
 func (s *server) Run() {
