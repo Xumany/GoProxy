@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"goproxy/socks"
+	"io"
 	"log"
 	"net"
 )
@@ -42,22 +43,22 @@ func process(conn net.Conn) {
 		}
 		conn.Write([]byte{buf[0], 0})
 	}
-	for {
-		n, err = conn.Read(buf[:])
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		writer, err := socks.Request(buf[:n])
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
-		// conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
-		conn.Write(writer)
+	n, err = conn.Read(buf[:])
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
+
+	writer, err := socks.Request(buf[:n])
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	// conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+	conn.Write(writer.Response)
+	io.Copy(writer.Conn, conn)
+	io.Copy(conn, writer.Conn)
 }
 func (s *server) Run() {
 

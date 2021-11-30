@@ -23,6 +23,10 @@ type socks struct {
 	Metions uint8
 	data    []byte
 }
+type data struct {
+	Response []byte
+	Conn     net.Conn
+}
 
 func New(b []byte) *socks {
 
@@ -60,7 +64,7 @@ func Check(b []byte) error {
 	return errors.New("账号密码错误")
 }
 
-func Request(b []byte) ([]byte, error) {
+func Request(b []byte) (*data, error) {
 	fmt.Println(b)
 	if b[0] != version {
 		return nil, errors.New("版本协议不对")
@@ -75,7 +79,10 @@ func Request(b []byte) ([]byte, error) {
 	case 1:
 		addr = fmt.Sprintf("%d.%d.%d.%d", b[4], b[5], b[6], b[7])
 	case 3:
-		addr = string(b[5:b[4]])
+		dmian := string(b[5 : len(b)-2])
+		ip, _ := net.ResolveIPAddr("ip", dmian)
+		addr = ip.String()
+		fmt.Printf("DNS解析前%s 解析后的地址%s\n", dmian, addr)
 	default:
 		return nil, errors.New("没有该协议")
 	}
@@ -86,6 +93,7 @@ func Request(b []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 	case 3:
 		conn, err = net.Dial("udp", fmt.Sprintf("%s:%d", addr, port))
 		if err != nil {
@@ -109,7 +117,11 @@ func Request(b []byte) ([]byte, error) {
 
 	requests = append(requests, bit...)
 	fmt.Printf("requests: %v\n", requests)
-	return requests, nil
+	data := data{
+		Response: requests,
+		Conn:     conn,
+	}
+	return &data, nil
 }
 
 func uin16ToBigendBytes(num uint16) []byte {
@@ -117,9 +129,3 @@ func uin16ToBigendBytes(num uint16) []byte {
 	binary.Write(bytesBuffer, binary.BigEndian, num)
 	return bytesBuffer.Bytes()
 }
-
-// func uint8toBigendBytes(num uint8) {
-// 	Buff := bytes.NewBuffer([]byte{})
-// 	binary.Write(Buff, binary.BigEndian, num)
-// 	return Buff.Bytes()
-// }
