@@ -3,9 +3,9 @@ package server
 import (
 	"fmt"
 	"goproxy/socks"
-	"io"
 	"log"
 	"net"
+	"sync"
 )
 
 var Servers = make([]server, 100)
@@ -18,9 +18,9 @@ func process(conn net.Conn) {
 	if conn == nil {
 		return
 	}
-	defer conn.Close()          // 关闭连接
-	var buf [256]byte           //这个是数组
-	n, err := conn.Read(buf[:]) // 读取数据 // 将这个数组转换切片进去
+	// conn.Close()
+	var buf [256]byte
+	n, err := conn.Read(buf[:])
 	if err != nil {
 		fmt.Println("read from client failed, err:", err)
 	}
@@ -55,13 +55,26 @@ func process(conn net.Conn) {
 		return
 	}
 
-	// conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	conn.Write(writer.Response)
-	io.Copy(writer.Conn, conn)
-	io.Copy(conn, writer.Conn)
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		defer writer.Conn.Close()
+		socks.Copy(writer.Conn, conn)
+	}()
+
+	go func() {
+		defer wg.Done()
+		defer conn.Close()
+		socks.Copy(conn, writer.Conn)
+	}()
+
+	wg.Wait()
+
 }
 func (s *server) Run() {
-
 	conn, err := net.Listen("tcp", "127.0.0.1:1080")
 	if err != nil {
 		log.Print("err")
@@ -74,7 +87,6 @@ func (s *server) Run() {
 		}
 		go process(c)
 	}
-
 }
 
 func New() *server {
