@@ -25,6 +25,7 @@ type socks struct {
 	Metions uint8
 	Metion  []byte
 }
+
 type data struct {
 	Response []byte
 	Conn     net.Conn
@@ -65,7 +66,6 @@ func Check(b []byte) error {
 }
 
 func Request(b []byte) (*data, error) {
-	log.Println("Request", b)
 	if b[0] != version {
 		return nil, errors.New("版本协议不对")
 	}
@@ -86,26 +86,16 @@ func Request(b []byte) (*data, error) {
 	default:
 		return nil, errors.New("没有该协议")
 	}
+	fmt.Println(addr)
 	var err error
 	switch cmd {
 	case 1:
 		fmt.Println("tcp链接")
-		conn, err = net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
-		if err != nil {
-			return nil, err
-		}
 	case 2:
-		fmt.Println("bind", b)
-		data := &data{
-			Response: []byte{5, 0, 0, 1, 127, 0, 0, 1, 16, 22},
-		}
-		return data, err
+		fmt.Println("bind")
+		return nil, err
 	case 3:
 		fmt.Println("udp链接")
-
-		if err != nil {
-			return nil, err
-		}
 	}
 	str := conn.RemoteAddr().String()
 
@@ -125,23 +115,6 @@ func uin16ToBigendBytes(num uint16) []byte {
 	return bytesBuffer.Bytes()
 }
 
-// func DataWiter(dst, src net.Conn) {
-// 	var buf = make([]byte, 256)
-// 	for {
-// 		n, err := src.Read(buf[:])
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			return
-// 		}
-// 		fmt.Println(buf[:n])
-// 		_, err = dst.Write(buf[:n])
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			return
-// 		}
-// 	}
-
-// }
 func Copy(src io.ReadWriteCloser, dst io.ReadWriteCloser) (written int64, err error) {
 	size := 1024
 	buf := make([]byte, size)
@@ -187,7 +160,6 @@ func iPToByte(str string) (b []byte, err error) {
 	}
 	b = append(b, portS...)
 	return b, err
-
 }
 
 /**
@@ -206,7 +178,10 @@ func BindnMethon(port uint16) {
 
 /**
  ** UDPAssocicte 方法
- **
+ ** 传输过来会host和端口
+ ** 需要我们绑定的是地址
+ ** 都为0服务器自己来控制端口
+ ** 链接之后将本地的IP和端口传回客户端
  **/
 func UdpAssocicteMethond() {
 
@@ -219,3 +194,37 @@ func UdpAssocicteMethond() {
 func ConnectMethon() {
 
 }
+
+/*
+BIND一般用于客户端与服务端建立连接之后，
+用于新建立服务端到客户端的连接，
+类似于FTP的PORT命令会用到
+（有可能记错了，但是肯定是有一个模式是由服务端主动连接客户端，PASV模式？）。
+这个过程的标准过程是这样的：
+客户端先通过connect建立一个到服务端的信令通道。
+客户端再建立一个新的连接到socks5 server，通过bind命令建立一个数据通道。
+socks5 server建立一个tcp的监听端口，
+但是为了安全起见，bind的时候客户端还会传一个DST地址，
+只限于指定地址来临的连接；bind成功之后，
+socks5 server返回监听的地址与端口到客户端；
+客户端通过信令通道（也可以使用其它任意的通道）把这个监听地址信息传给服务端；
+服务端通过正常的tcp connect操作连接socks5 server上的监听端口；
+连接建立之后，socks5 server再传送一次BIND成功的信息，
+这一次就有了真正的连接者（服务端）的连接信息了。
+所以说BIND事件是有两次返回的，
+第一次是客户端BIND通过socks5 server建立监听端口成功之后；
+第二次是直接连接发生的时候。这段话写得有点绕，主要是在BIND的操作中，
+服务端与客户端其实倒了一个身份，变成服务端主动连接客户端了。
+UDP associate
+UDP用于建立一个UDP的跳转通道（依赖于TCP的socks5协议），过程如下：
+客户端与socks5 server建立tcp的连接；
+客户端发送udp associate请求，socks5 server分配一个udp的端口，
+并将此端口返回给客户端；同前面的BIND一样，
+客户端也可以限制使用此udp的使用范围（谁可以使用）；
+客户端将自己要发送的UDP报文发送到到socks5 server，
+但是前面是有一个复用头的，它告诉socks5 server真正发送到哪里去；
+回头的报文也按照相同的格式进行封装。
+对于转发的UDP报文，无论是成功与否，都不再有额外的通知报文。
+这里的associated的udp通道与tcp通道，具有相同的生命周期。
+
+*/
