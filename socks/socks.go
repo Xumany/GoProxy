@@ -20,7 +20,7 @@ const (
 	password = "admin"
 )
 
-type socks struct {
+type socksAuth struct {
 	Version uint8
 	Metions uint8
 	Metion  []byte
@@ -31,15 +31,15 @@ type data struct {
 	Conn     net.Conn
 }
 
-func New(b []byte) *socks {
-	return &socks{
+func New(b []byte) *socksAuth {
+	return &socksAuth{
 		Version: b[0],
 		Metions: b[1],
 		Metion:  b[2:],
 	}
 }
 
-func (s *socks) Auth() ([]byte, error) {
+func (s *socksAuth) Auth() ([]byte, error) {
 	if s.Version != version {
 		return nil, errors.New("协议版本错误")
 	}
@@ -90,11 +90,14 @@ func Request(b []byte) (*data, error) {
 	var err error
 	switch cmd {
 	case 1:
+		ConnectMethon()
 		fmt.Println("tcp链接")
 	case 2:
+		BindnMethon()
 		fmt.Println("bind")
 		return nil, err
 	case 3:
+		UdpAssocicteMethond()
 		fmt.Println("udp链接")
 	}
 	str := conn.RemoteAddr().String()
@@ -172,7 +175,7 @@ func iPToByte(str string) (b []byte, err error) {
  ** []byte{5,0,0,IPAaddrtype,IP,端口}
  ** 回复之后在将数据互相转发
  **/
-func BindnMethon(port uint16) {
+func BindnMethon() {
 
 }
 
@@ -226,5 +229,9 @@ UDP用于建立一个UDP的跳转通道（依赖于TCP的socks5协议），过�
 回头的报文也按照相同的格式进行封装。
 对于转发的UDP报文，无论是成功与否，都不再有额外的通知报文。
 这里的associated的udp通道与tcp通道，具有相同的生命周期。
+*/
 
+/*
+bind协议 测试工具 FileZilla
+Connect/UDP 协议测试工具 QQ SocketTool4
 */
