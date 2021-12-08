@@ -5,7 +5,7 @@
 
 # 实例
 ```go
-go get github.com/0990/socks5
+go get github.com/Xumany/GoProxy
 ```
 
 # 案例
