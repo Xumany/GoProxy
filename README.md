@@ -1,3 +1,24 @@
 # goProxy
-this a goproxy project
-# 中问
+轻量的socks5代理服务器,代码简单易读，就像sock原始协议一样
+
+
+
+# 实例
+```go
+go get github.com/0990/socks5
+```
+
+# 案例
+```go
+s := socks5.NewServer(socks5.ServerCfg{
+	    Port: 1080,
+	    LogLevel:"error",
+        FilePath:"./GoProxy.log"
+})
+err := s.Run()
+if err != nil {
+	log.Fatalln(err)
+}
+```
+# 鸣谢
+<https://github.com/wzshiming/socks5>

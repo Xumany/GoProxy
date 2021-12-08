@@ -5,7 +5,11 @@ import (
 )
 
 func main() {
-	s := server.New()
+	c := server.Options{
+		Port: 1080,
+		Udp:  true,
+	}
+	s := server.New(c)
 	s.Run()
 
 }

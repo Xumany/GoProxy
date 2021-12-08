@@ -5,13 +5,15 @@ import (
 	"goproxy/socks"
 	"log"
 	"net"
-	"sync"
 )
 
-var Servers = make([]server, 100)
-
-type server struct {
-	Connect net.Conn
+type Options struct {
+	Port     uint16
+	Udp      bool
+	Bind     bool
+	User     string
+	Pass     string
+	LogLevel string
 }
 
 func process(conn net.Conn) {
@@ -19,76 +21,74 @@ func process(conn net.Conn) {
 		return
 	}
 	// conn.Close()
-	var buf [256]byte
-	n, err := conn.Read(buf[:])
+	var buf [50]byte
+	num, err := conn.Read(buf[:])
 	if err != nil {
-		fmt.Println("read from client failed, err:", err)
+		log.Println("read from client failed, err:", err)
 	}
-	socks5 := socks.New(buf[:n])
+	socks5 := socks.New(buf[:num])
 	b, err := socks5.Auth()
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
-	conn.Write(b)
-	if b[1] == socks.UserPass {
-		n, err := conn.Read(buf[:]) // 读取数据 // 将这个数组转换切片进去
-		if err != nil {
-			fmt.Println("read from client failed, err:", err)
-		}
-		err = socks.Check(buf[:n])
-		if err != nil {
-			conn.Write([]byte{buf[0], 1})
-			fmt.Println(err)
-		}
-		conn.Write([]byte{buf[0], 0})
-	}
-	n, err = conn.Read(buf[:])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	fmt.Println(b)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// conn.Write(b)
+	// if b[1] == socks.UserPass {
+	// 	n, err := conn.Read(buf[:]) // 读取数据 // 将这个数组转换切片进去
+	// 	if err != nil {
+	// 		fmt.Println("read from client failed, err:", err)
+	// 	}
+	// 	err = socks.Check(buf[:n])
+	// 	if err != nil {
+	// 		conn.Write([]byte{buf[0], 1})
+	// 		fmt.Println(err)
+	// 	}
+	// 	conn.Write([]byte{buf[0], 0})
+	// }
+	// n, err = conn.Read(buf[:])
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	writer, err := socks.Request(buf[:n])
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	// writer, err := socks.Request(buf[:n])
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// 	return
+	// }
 
-	conn.Write(writer.Response)
-	wg := new(sync.WaitGroup)
-	wg.Add(2)
+	// conn.Write(writer.Response)
 
-	go func() {
-		defer wg.Done()
-		defer writer.Conn.Close()
-		socks.Copy(writer.Conn, conn)
-	}()
+	//	go func() {
+	//		defer writer.Conn.Close()
+	//		socks.Copy(writer.Conn, conn)
+	//	}()
 
-	go func() {
-		defer wg.Done()
-		defer conn.Close()
-		socks.Copy(conn, writer.Conn)
-	}()
-
-	wg.Wait()
+	//	go func() {
+	//		defer conn.Close()
+	//		socks.Copy(conn, writer.Conn)
+	//	}()
 
 }
-func (s *server) Run() {
-	conn, err := net.Listen("tcp", "127.0.0.1:1080")
+func (s *Options) Run() error {
+	conn, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Port))
 	if err != nil {
-		log.Print("err")
+		log.Println("err:", err)
 	}
 	defer conn.Close()
 	for {
 		c, err := conn.Accept()
 		if err != nil {
-			log.Println("err" + err.Error())
+			log.Println("err:", err)
 		}
 		go process(c)
 	}
 }
 
-func New() *server {
-	return &server{}
+func New(o Options) *Options {
+	return &Options{}
 }
