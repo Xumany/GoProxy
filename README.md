@@ -3,7 +3,7 @@
 
 
 
-# 实例
+# 安装
 ```go
 go get github.com/Xumany/GoProxy
 ```
