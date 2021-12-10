@@ -1,4 +1,4 @@
-# goProxy
+# GoProxy
 轻量的socks5代理服务器,代码简单易读，就像sock原始协议一样
 
 
