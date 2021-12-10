@@ -1,99 +1,57 @@
-package server
+package metions
 
 import (
+	"encoding/binary"
 	"fmt"
-	"goproxy/socks"
 	"log"
 	"net"
 )
 
-type Options struct {
-	Port     uint16
-	Udp      bool
-	Bind     bool
-	User     string
-	Pass     string
-	LogLevel string
+const (
+	Connect uint8 = iota + 1
+	Bind
+	UdpAssocicte
+)
+
+const (
+	iPv4   uint8 = iota + 1
+	domain uint8 = iota + 1
+	iPv6
+)
+
+type socks struct {
+	Ver      uint8
+	Cmd      uint8
+	Rsv      byte
+	AddrType byte
+	Addr     string
+	Port     string
 }
 
-//将conn传入到socks 里面验证通过之后 返回所有信息
-
-func process(conn net.Conn) {
-	if conn == nil {
-		return
-	}
-	// conn.Close()
-	var buf [50]byte
-	num, err := conn.Read(buf[:])
+func New(conn net.Conn) *socks {
+	buff := make([]byte, 256)
+	n, err := conn.Read(buff)
 	if err != nil {
-		log.Println("read from client failed, err:", err)
+		panic(err)
 	}
-	socks5 := socks.New(buf[:num], conn)
-	err = socks5.Auth()
-	if err != nil {
-		return
+	buff = buff[:n]
+	s := &socks{
+		Ver:      buff[0],
+		Cmd:      buff[1],
+		Rsv:      buff[2],
+		AddrType: buff[3],
+		Port:     string(binary.BigEndian.Uint16(buff[len(buff)-2:])),
 	}
-	//没有错误就是说明验证通过没有错误
-	// 现在需要验证 是什么方法
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// conn.Write(b)
-	// if b[1] == socks.UserPass {
-	// 	n, err := conn.Read(buf[:]) // 读取数据 // 将这个数组转换切片进去
-	// 	if err != nil {
-	// 		fmt.Println("read from client failed, err:", err)
-	// 	}
-	// 	err = socks.Check(buf[:n])
-	// 	if err != nil {
-	// 		conn.Write([]byte{buf[0], 1})
-	// 		fmt.Println(err)
-	// 	}
-	// 	conn.Write([]byte{buf[0], 0})
-	// }
-	// n, err = conn.Read(buf[:])
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-
-	// writer, err := socks.Request(buf[:n])
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
-
-	// conn.Write(writer.Response)
-
-	//	go func() {
-	//		defer writer.Conn.Close()
-	//		socks.Copy(writer.Conn, conn)
-	//	}()
-
-	//	go func() {
-	//		defer conn.Close()
-	//		socks.Copy(conn, writer.Conn)
-	//	}()
-
-}
-func (s *Options) Run() error {
-	conn, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Port))
-	if err != nil {
-		log.Println("err:", err)
+	switch s.AddrType {
+	case iPv4:
+		s.Addr = fmt.Sprintf("%d.%d.%d.%d", buff[4], buff[5], buff[6], buff[7])
+	case domain:
+		s.Addr = string(buff[5 : len(buff)-2])
+	case iPv6:
+		s.Addr = fmt.Sprintf("%d:%d:%d:%d:%d:%d", buff[4], buff[5], buff[6], buff[7], buff[8], buff[9])
+		log.Println("目前不支持IPv6")
 	}
-	defer conn.Close()
-	for {
-		c, err := conn.Accept()
-		if err != nil {
-			log.Println("err:", err)
-		}
-		go process(c)
-	}
-}
-
-func New(o Options) *Options {
-	return &Options{}
+	return s
 }
 
 /**
@@ -163,6 +121,6 @@ UDP用于建立一个UDP的跳转通道（依赖于TCP的socks5协议），过�
 */
 
 /*
-bind协议 测试工具 FileZilla
+bind        协议测试工具 FileZilla
 Connect/UDP 协议测试工具 QQ SocketTool4
 */
